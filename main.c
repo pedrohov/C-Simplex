@@ -19,12 +19,13 @@ int main(int argc, char *argv[]) {
 		return 0;
 	}
 
-    Model m = carregaModelo(argv[1]);
-    int solucao = simplex(m);
-    //imprimeModelo(m);
+    Model modelo = carregaModelo(argv[1]);
+    int solucao = simplex(modelo);
+    outputModelo(modelo, solucao, argv[1], argv[2]);
+    imprimeModelo(modelo);
 
     // Libera memoria utilizada pelo modelo:
-    liberaModelo(m);
+    liberaModelo(modelo);
 
 	return 0;
 }

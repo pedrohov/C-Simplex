@@ -90,6 +90,7 @@ Matrix matCarrega(char nomeArquivo[])
         for(j = 0; j < nova -> col; j++)
             fscanf(parq, "%lf", &nova->p[i][j]);
 
+    fclose(parq);
     return nova;
 }
 

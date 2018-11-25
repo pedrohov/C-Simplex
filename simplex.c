@@ -12,24 +12,137 @@
 
 // Estrutura:
 struct Tmodel {
-    Matrix A;
-    Matrix b;
-    Matrix custo;
-    Matrix base;
-    Matrix naoBase;
-    Matrix B;
-    Matrix solucao;
+    Matrix A;           // Matriz A.
+    Matrix b;           // Vetor de igualdade das restricoes.
+    Matrix custo;       // Vetor de custo (min).
+    Matrix base;        // Vetor com as variaveis na base.
+    Matrix naoBase;     // Vetor com as variaveis nao-base.
+    Matrix artificiais; // Vetor com as variaveis artificiais.
+    Matrix B;           // Matriz das colunas de cada variavel base.
+    Matrix solucao;     // Vetor solucao das variaveis presentes na base.
 };
 
 // Sub-rotinas:
+Model carregaModelo(char arquivo[]) {
+     // Abre o arquivo para leitura:
+    FILE *parq;
+    parq = fopen(arquivo, "r");
+
+    // Caso o arquivo nao exista, retorna NULL:
+    if(parq == NULL)
+    {
+        printf("Arquivo nao encontrado.\n");
+        return NULL;
+    } 
+
+    // Determinar quantidade de linhas e colunas;
+    int i, j, k, a;
+    double valor;
+    fscanf(parq, "%d", &i);
+    fscanf(parq, "%d", &j);
+    fscanf(parq, "%d", &a);
+
+    // Cria vetor b:
+    Matrix b = matCria(i, 1);
+    for(k = 0; k < i; k++) {
+        fscanf(parq, "%lf", &valor);
+        matPut(b, k, 0, valor);
+    }
+
+    // Cria vetor de custo:
+    Matrix c = matCria(j, 1);
+    for(k = 0; k < j; k++) {
+        fscanf(parq, "%lf", &valor);
+        matPut(c, k, 0, valor);
+    }
+
+    // Cria vetor base:
+    Matrix base = matCria(i, 1);
+    for(k = 0; k < i; k++) {
+        fscanf(parq, "%lf", &valor);
+        matPut(base, k, 0, valor - 1);
+    }
+
+    // Cria vetor nao-base:
+    Matrix naoBase = matCria((j - i), 1);
+    for(k = 0; k < (j - i); k++) {
+        fscanf(parq, "%lf", &valor);
+        matPut(naoBase, k, 0, valor - 1);
+    }
+
+    // Cria vetor de variaveis artificiais:
+    Matrix artificiais = matCria(a, 1);
+    if(a > 0) {
+        for(k = 0; k < a; k++) {
+            fscanf(parq, "%lf", &valor);
+            matPut(artificiais, k, 0, valor - 1);
+        }
+    }
+
+    // Cria matriz A:
+    Matrix A;
+    A = matCria(i, j);
+
+    // Le e salva cada elemento na matriz:
+    for(i = 0; i < matNlinhas(A); i++) {
+        for(j = 0; j < matNcolunas(A); j++) {
+            fscanf(parq, "%lf", &valor);
+            matPut(A, i, j, valor);
+        }
+    }
+
+    // Empacota os dados em um novo modelo:
+    Model modelo = criaModelo(A, b, c, base, naoBase, artificiais);
+
+    fclose(parq);
+    return modelo;
+}
+
+Model criaModelo(Matrix A, Matrix b, Matrix c, Matrix base, Matrix naoBase, Matrix artificiais) {
+    // Prerequisitos (matrizes e vetores validos):
+    if((A == NULL) || (b == NULL) || (c == NULL) || (base == NULL) || (naoBase == NULL))
+        return NULL;
+
+    // Aloca memoria para o modelo:
+    Model novo = (Model) malloc(sizeof(struct Tmodel));
+
+    // Atribui valores:
+    novo -> A = A;
+    novo -> b = b;
+    novo -> custo = c;
+    novo -> base = base;
+    novo -> naoBase = naoBase;
+    novo -> artificiais = artificiais;
+    novo -> solucao = NULL;
+
+    // Cria a matriz basica:
+    Matrix B = matCria(matNlinhas(A), matNlinhas(A));
+    novo -> B = B;
+
+    return novo;
+}
+
+double calcObjetivo(Model modelo) {
+    // Calcula o valor da funcao objetivo do modelo:
+    double objetivo = 0;
+    int i;
+    for(i = 0; i < matNlinhas(modelo -> base); i++) {
+        int baseI = matGet(modelo -> base, i, 0);
+        objetivo += matGet(modelo -> custo, baseI, 0) * matGet(modelo -> solucao, i, 0);
+    }
+
+    return objetivo;
+}
+
 int simplex(Model modelo) {
     /* 
      * Executa o simplex e atualiza o campo 'solucao' do modelo.
      * Retorna -1 se o modelo nao possuir solucao;
      * Retorna -2 se a solucao for ilimitada;
      * Retorna -3 se houverem multiplas solucoes;
-     * Retorna  1 se houver uma unica solucao otima.
-     * [DEBUG] matImprime(Matrix m) printa qualquer matriz/vetor no console.
+     * Retorna >= 0 se houver uma unica solucao otima. Retorna numero de iteracoes.
+     * [DEBUG] matImprime(Matrix m) mostra qualquer matriz/vetor no console.
+     * [DEBUG] imprimeModelo(Model m) mostra todos os dados do simplex na iteracao atual.
      */
 
     // Prerequisitos (modelo nao nulo):
@@ -116,15 +229,20 @@ int simplex(Model modelo) {
         if(indiceMenor == -1) {
             objetivo = calcObjetivo(modelo);
 
+            // (REQUISITO 09) - Solucao inexistente (Variaveis artificiais presentes na solucao):
+            if(artificialNaBase(modelo)){
+                printf("[Simplex] Solucao inexistente.\n");
+                return -1;
+            }
             // (REQUISITO 09) - Multiplos Otimos:
-            if(existeNaoBase0(modelo, custoReduzido)){
+            else if(existeNaoBase0(modelo, custoReduzido)){
                 printf("[Simplex] Multiplos Otimos.\nIteracoes = %d\nCusto otimo = %lf\n", iteracoes, objetivo);
                 return -3;
             }
             // (REQUISITO 09) - Solucao Otima Unica:
             else {
                 printf("[Simplex] Solucao Otima Unica.\nIteracoes = %d\nCusto otimo = %lf\n", iteracoes, objetivo);
-                return 1;
+                return iteracoes;
             }
         }
 
@@ -132,7 +250,7 @@ int simplex(Model modelo) {
         matLibera(custoReduzido);
 
         // [DEBUG] Indice da variavel a entrar na base:
-        // printf("Entra na base %d\n", indiceMenor);
+        printf("Entra na base %d\n", indiceMenor);
 
         // (REQUISITO 09) - Solucao Ilimitada:
         Matrix Aj = matGetColuna(modelo -> A, indiceMenor);
@@ -160,7 +278,7 @@ int simplex(Model modelo) {
         }
 
         // [DEBUG] Indice da variavel a sair da base:
-        // printf("Variavel sai da base: %d, theta = %lf\n", indice, theta);
+        printf("Variavel sai da base: %d, theta = %lf\n", indice, theta);
 
         // (REQUISITO 07) Atualiza a base:
         for(i = 0; i < m; i++) {
@@ -183,6 +301,68 @@ int simplex(Model modelo) {
     }
 
     return -1;
+}
+
+int artificialNaBase(Model modelo) {
+    // (REQUISITO 09) Checa se existe uma variavel artificial na base:
+    if((modelo == NULL) || (modelo -> artificiais == NULL))
+        return 0;
+
+    int i, j;
+    for(i = 0; i < matNlinhas(modelo -> artificiais); i++) {
+        int artificial = matGet(modelo -> artificiais, i, 0);
+        for(j = 0; j < matNlinhas(modelo -> base); j++) {
+            if(artificial == matGet(modelo -> base, j, 0))
+                return 1;
+        }
+    }
+
+    return 0;
+}
+
+int existePositivo(Matrix u) {
+    // (REQUISITO 09) Checa se existe um valor positivo na linha 'u':
+    if(u == NULL)
+        return 0;
+
+    int i;
+    for(i = 0; i < matNlinhas(u); i++) {
+        if(matGet(u, i, 0) > 0)
+            return 1;
+    }
+    return 0;
+}
+
+int existeNaoBase0(Model modelo, Matrix custoReduzido) {
+    // (REQUISITO 09) Checa se existe uma variavel nao base com custo reduzido zero:
+    if((modelo == NULL) || (custoReduzido == NULL))
+        return 0;
+
+    int i, j;
+    for(i = 0; i < matNcolunas(custoReduzido); i++) {
+        double custo = matGet(custoReduzido, 0, i);
+
+        // Trata valores muito pequenos de custo (i.e: 1e-16).
+        // Arredonda o valor para 5 casas decimais:
+        double fac = pow(10, 5);
+        custo = round(custo * fac) / fac;
+
+        // Encontrou um custo reduzido igual a zero:
+        if(custo == 0) {
+            // Olha se o indice 'i' existe na base:
+            int existe = 0;
+            for(j = 0; j < matNlinhas(modelo -> base); j++){
+                if(matGet(modelo -> base, j, 0) == i) {
+                    existe = 1;
+                    break;
+                }
+            }
+            if(!existe)
+                return 1;
+        }
+    }
+
+    return 0;
 }
 
 void imprimeModelo(Model modelo) {
@@ -243,142 +423,40 @@ void liberaModelo(Model modelo) {
     return;
 }
 
-double calcObjetivo(Model modelo) {
-    // Calcula o valor da funcao objetivo do modelo:
-    double objetivo = 0;
-    int i;
-    for(i = 0; i < matNlinhas(modelo -> base); i++) {
-        int baseI = matGet(modelo -> base, i, 0);
-        objetivo += matGet(modelo -> custo, baseI, 0) * matGet(modelo -> solucao, i, 0);
-    }
+void outputModelo(Model modelo, int iteracoes, char entrada[], char saida[]) {
+    if((modelo == NULL) || (modelo -> solucao == NULL))
+        return;
 
-    return objetivo;
-}
+    FILE *arq = fopen(saida, "w");
 
-int existePositivo(Matrix u) {
-    // (REQUISITO 09) Checa se existe um valor positivo na linha 'u':
-    if(u == NULL)
-        return 0;
+    if(iteracoes == -1)
+        fprintf(arq, "Modelo: %s\nSolucao inexistente\n", entrada);
+    else if(iteracoes == -2)
+        fprintf(arq, "Modelo: %s\nSolucao ilimitada\n", entrada);
+    else if(iteracoes == -2)
+        fprintf(arq, "Modelo: %s\nMultiplas solucoes\n", entrada);
+    else
+        fprintf(arq, "Modelo: %s\nSolucao Unica Otima encontrada\n", entrada);
 
-    int i;
-    for(i = 0; i < matNlinhas(u); i++) {
-        if(matGet(u, i, 0) > 0)
-            return 1;
-    }
-    return 0;
-}
+    fprintf(arq, "\nIteracoes: %d\nOtimo: %.2lf\n\n", iteracoes, calcObjetivo(modelo));
 
-int existeNaoBase0(Model modelo, Matrix custoReduzido) {
-    // (REQUISITO 09) Checa se existe uma variavel nao base com custo reduzido zero:
-    if((modelo == NULL) || (custoReduzido == NULL))
-        return 0;
-
-    int i, j;
-    for(i = 0; i < matNcolunas(custoReduzido); i++) {
-        double custo = matGet(custoReduzido, 0, i);
-        // Encontrou um custo reduzido igual a zero:
-        if(custo == 0) {
-            // Olha se o indice 'i' existe na base:
-            int existe = 0;
-            for(j = 0; j < matNlinhas(modelo -> base); j++){
-                if(matGet(modelo -> base, j, 0) == i) {
-                    existe = 1;
-                    break;
-                }
-            }
-
-            if(!existe)
-                return 1;
-        }
-    }
-
-    return 0;
-}
-
-Model carregaModelo(char arquivo[]) {
-     // Abre o arquivo para leitura:
-    FILE *parq;
-    parq = fopen(arquivo, "r");
-
-    // Caso o arquivo nao exista, retorna NULL:
-    if(parq == NULL)
-    {
-        printf("Arquivo nao encontrado.\n");
-        return NULL;
-    } 
-
-    // Determinar quantidade de linhas e colunas;
+    // Exibe o valor das variaveis:
     int i, j, k;
-    double valor;
-    fscanf(parq, "%d", &i);
-    fscanf(parq, "%d", &j);
+    for(i = 0; i < matNlinhas(modelo -> custo); i++) {
+        double valor = 0;
 
-    // Cria vetor b:
-    Matrix b = matCria(i, 1);
-    for(k = 0; k < i; k++) {
-        fscanf(parq, "%lf", &valor);
-        matPut(b, k, 0, valor);
-    }
-
-    // Cria vetor de custo:
-    Matrix c = matCria(j, 1);
-    for(k = 0; k < j; k++) {
-        fscanf(parq, "%lf", &valor);
-        matPut(c, k, 0, valor);
-    }
-
-    // Cria vetor base:
-    Matrix base = matCria(i, 1);
-    for(k = 0; k < i; k++) {
-        fscanf(parq, "%lf", &valor);
-        matPut(base, k, 0, valor - 1);
-    }
-
-    // Cria vetor nao-base:
-    Matrix naoBase = matCria((j - i), 1);
-    for(k = 0; k < (j - i); k++) {
-        fscanf(parq, "%lf", &valor);
-        matPut(naoBase, k, 0, valor - 1);
-    }
-
-    // Cria matriz A:
-    Matrix A;
-    A = matCria(i, j);
-
-    // Le e salva cada elemento na matriz:
-    for(i = 0; i < matNlinhas(A); i++) {
-        for(j = 0; j < matNcolunas(A); j++) {
-            fscanf(parq, "%lf", &valor);
-            matPut(A, i, j, valor);
+        // Procura se a variavel 'i' esta na base:
+        for(j = 0; j < matNlinhas(modelo -> base); j++) {
+            int base = matGet(modelo -> base, j, 0);
+            if(i == base) {
+                // Pega o valor da base na solucao:
+                valor = matGet(modelo -> solucao, j, 0);
+            }
         }
+
+        fprintf(arq, "x[%d] = %.2lf\n", (i + 1), valor);
     }
 
-    // Empacota os dados em um novo modelo:
-    Model modelo = criaModelo(A, b, c, base, naoBase);
-
-    fclose(parq);
-    return modelo;
-}
-
-Model criaModelo(Matrix A, Matrix b, Matrix c, Matrix base, Matrix naoBase) {
-    // Prerequisitos (matrizes e vetores validos):
-    if((A == NULL) || (b == NULL) || (c == NULL) || (base == NULL) || (naoBase == NULL))
-        return NULL;
-
-    // Aloca memoria para o modelo:
-    Model novo = (Model) malloc(sizeof(struct Tmodel));
-
-    // Atribui valores:
-    novo -> A = A;
-    novo -> b = b;
-    novo -> custo = c;
-    novo -> base = base;
-    novo -> naoBase = naoBase;
-    novo -> solucao = NULL;
-
-    // Cria a matriz basica:
-    Matrix B = matCria(matNlinhas(A), matNlinhas(A));
-    novo -> B = B;
-
-    return novo;
+    fclose(arq);
+    return;
 }
