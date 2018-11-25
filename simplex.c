@@ -179,6 +179,7 @@ int simplex(Model modelo) {
         double menorCusto = INFINITY;
         int indiceMenor = -1;
         for(i = 0; i < matNlinhas(modelo -> naoBase); i++) {
+
             int indice = matGet(modelo -> naoBase, i, 0);
 
             // Custo do indice na funcao objetivo:
@@ -200,6 +201,13 @@ int simplex(Model modelo) {
             custo = custo - matGet(resOp2, 0, 0);
             matPut(custoReduzido, 0, indice, custo);
             
+            // Trata valores de custo muito pequenos e negativos (i.e: -1e-16).
+            // (REQUISITO 09) Degeneracao - Garantir que custos proximos de 0 sejam +0.
+            // Arredonda o valor para 5 casas decimais.
+            double fac = pow(10, 5);
+            custo = round(custo * fac) / fac;
+
+            // (REQUISITO 09) Degeneracao - Custos reduzidos iguais a zero nao entram na base.
             // Se o custo for negativo:
             if(custo < 0) {
                 if(custo < menorCusto) {
@@ -208,7 +216,7 @@ int simplex(Model modelo) {
                     menorCusto = custo;
                 }
             }
-
+            
             // [DEBUG] (REQUISITO 05) Mostra direcao encontrada:
             // printf("Direcao factivel %d, custo reduzido %lf\n", indice, custo);
             // matImprime(direcao);
@@ -250,7 +258,7 @@ int simplex(Model modelo) {
         matLibera(custoReduzido);
 
         // [DEBUG] Indice da variavel a entrar na base:
-        printf("Entra na base %d\n", indiceMenor);
+        // printf("Entra na base %d, custo = %lf\n", indiceMenor, menorCusto);
 
         // (REQUISITO 09) - Solucao Ilimitada:
         Matrix Aj = matGetColuna(modelo -> A, indiceMenor);
@@ -268,6 +276,7 @@ int simplex(Model modelo) {
 
         for(i = 0; i < m; i++) {
             if(matGet(u, i, 0) > 0) {
+
                 double razao = matGet(modelo -> solucao, i, 0) / matGet(u, i, 0);
 
                 if(razao < theta) {
@@ -278,7 +287,7 @@ int simplex(Model modelo) {
         }
 
         // [DEBUG] Indice da variavel a sair da base:
-        printf("Variavel sai da base: %d, theta = %lf\n", indice, theta);
+        // printf("Variavel sai da base: %d, theta = %lf\n", indice, theta);
 
         // (REQUISITO 07) Atualiza a base:
         for(i = 0; i < m; i++) {
@@ -433,12 +442,12 @@ void outputModelo(Model modelo, int iteracoes, char entrada[], char saida[]) {
         fprintf(arq, "Modelo: %s\nSolucao inexistente\n", entrada);
     else if(iteracoes == -2)
         fprintf(arq, "Modelo: %s\nSolucao ilimitada\n", entrada);
-    else if(iteracoes == -2)
-        fprintf(arq, "Modelo: %s\nMultiplas solucoes\n", entrada);
+    else if(iteracoes == -3)
+        fprintf(arq, "Modelo: %s\nMultiplos otimos\n", entrada);
     else
-        fprintf(arq, "Modelo: %s\nSolucao Unica Otima encontrada\n", entrada);
+        fprintf(arq, "Modelo: %s\nSolucao Unica Otima encontrada\n\nIteracoes: %d", iteracoes, entrada);
 
-    fprintf(arq, "\nIteracoes: %d\nOtimo: %.2lf\n\n", iteracoes, calcObjetivo(modelo));
+    fprintf(arq, "\nOtimo: %.2lf\n\n", calcObjetivo(modelo));
 
     // Exibe o valor das variaveis:
     int i, j, k;
