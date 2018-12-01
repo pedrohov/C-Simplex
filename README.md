@@ -4,7 +4,7 @@ Trabalho Prático da disciplina de Pesquisa Operacional. O trabalho consiste na 
 
 # Execução
 No Windows é necessário ter a ferramenta make e o compilador gcc acessíveis pelo terminal.
-Os parâmetros *Modelo* e *Saída* são obrigatórios.
+Os parâmetros *modelo* e *saída* são obrigatórios. O modelo deve ser informado na forma padrão.
 
 ```
 make
