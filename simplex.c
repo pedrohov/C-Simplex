@@ -36,11 +36,10 @@ Model carregaModelo(char arquivo[]) {
     } 
 
     // Determinar quantidade de linhas e colunas;
-    int i, j, k, a;
-    double valor;
+    int i, j, k;
+    double valor, bigM;
     fscanf(parq, "%d", &i);
     fscanf(parq, "%d", &j);
-    fscanf(parq, "%d", &a);
 
     // Cria vetor b:
     Matrix b = matCria(i, 1);
@@ -49,46 +48,40 @@ Model carregaModelo(char arquivo[]) {
         matPut(b, k, 0, valor);
     }
 
-    // Cria vetor de custo:
-    Matrix c = matCria(j, 1);
+    // Cria vetor de custo (Add 'i' variaveis artificiais):
+    Matrix c = matCria(j + i, 1);
     for(k = 0; k < j; k++) {
         fscanf(parq, "%lf", &valor);
         matPut(c, k, 0, valor);
     }
 
-    // Cria vetor base:
+    // Cria vetor base, nao-base e variaveis artificiais:
     Matrix base = matCria(i, 1);
-    for(k = 0; k < i; k++) {
-        fscanf(parq, "%lf", &valor);
-        matPut(base, k, 0, valor - 1);
-    }
-
-    // Cria vetor nao-base:
-    Matrix naoBase = matCria((j - i), 1);
-    for(k = 0; k < (j - i); k++) {
-        fscanf(parq, "%lf", &valor);
-        matPut(naoBase, k, 0, valor - 1);
-    }
-
-    // Cria vetor de variaveis artificiais:
-    Matrix artificiais = matCria(a, 1);
-    if(a > 0) {
-        for(k = 0; k < a; k++) {
-            fscanf(parq, "%lf", &valor);
-            matPut(artificiais, k, 0, valor - 1);
+    Matrix naoBase = matCria(j, 1);
+    Matrix artificiais = matCria(i, 1);
+    bigM = 99999;
+    for(k = 0; k < (i + j); k++) {
+        if(k < j)
+            matPut(naoBase, k, 0, k);
+        else {
+            matPut(base, (i + j) - k - 1, 0, k);
+            matPut(artificiais, (i + j) - k - 1, 0, k);
+            matPut(c, k, 0, bigM);
         }
     }
 
     // Cria matriz A:
     Matrix A;
-    A = matCria(i, j);
+    A = matCria(i, (j + i));
 
     // Le e salva cada elemento na matriz:
     for(i = 0; i < matNlinhas(A); i++) {
-        for(j = 0; j < matNcolunas(A); j++) {
+        for(k = 0; k < (matNcolunas(A) - matNlinhas(A)); k++) {
             fscanf(parq, "%lf", &valor);
-            matPut(A, i, j, valor);
+            matPut(A, i, k, valor);
         }
+        // Forma colunas extras para variaveis artificiais:
+        matPut(A, i, (i + j), 1);
     }
 
     // Empacota os dados em um novo modelo:
@@ -445,13 +438,13 @@ void outputModelo(Model modelo, int iteracoes, char entrada[], char saida[]) {
     else if(iteracoes == -3)
         fprintf(arq, "Modelo: %s\nMultiplos otimos\n", entrada);
     else
-        fprintf(arq, "Modelo: %s\nSolucao Unica Otima encontrada\n\nIteracoes: %d", iteracoes, entrada);
+        fprintf(arq, "Modelo: %s\nSolucao Unica Otima encontrada\n\nIteracoes: %d", entrada, iteracoes);
 
     fprintf(arq, "\nOtimo: %.2lf\n\n", calcObjetivo(modelo));
 
     // Exibe o valor das variaveis:
     int i, j, k;
-    for(i = 0; i < matNlinhas(modelo -> custo); i++) {
+    for(i = 0; i < (matNlinhas(modelo -> custo) - matNlinhas(modelo -> A)); i++) {
         double valor = 0;
 
         // Procura se a variavel 'i' esta na base:

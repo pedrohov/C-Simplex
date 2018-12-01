@@ -22,7 +22,6 @@ int main(int argc, char *argv[]) {
     Model modelo = carregaModelo(argv[1]);
     int solucao = simplex(modelo);
     outputModelo(modelo, solucao, argv[1], argv[2]);
-    imprimeModelo(modelo);
 
     // Libera memoria utilizada pelo modelo:
     liberaModelo(modelo);
