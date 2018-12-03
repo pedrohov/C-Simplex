@@ -17,9 +17,9 @@ typedef struct Tmodel *Model;
 Model  carregaModelo (char arquivo[]); // Carrega modelos na forma canonica.
 Model  criaModelo (Matrix A, Matrix b, Matrix c, Matrix base, Matrix naoBase, Matrix artificiais);
 double calcObjetivo (Model modelo);    // Calcula a funcao objetivo do modelo para a solucao atual.
-int    simplex (Model modelo);		   // Procura por uma solucao unica otima utilizando o simplex.
+int    simplex (Model modelo);         // Procura por uma solucao unica otima utilizando o simplex.
 int    artificialNaBase(Model modelo); // Verifica se nao existe solucao.
-int    existePositivo (Matrix u);	   // Verifica se a solucao e ilimitada.
+int    existePositivo (Matrix u);      // Verifica se a solucao e ilimitada.
 int    existeNaoBase0 (Model modelo, Matrix custoReduzido); // Verifica se existem multiplos otimos.
 void   imprimeModelo (Model modelo);   // Exibe os dados do modelo.
 void   geraMatrizBase (Model modelo);  // Pega as colunas de A que pertencem a base e cria B.
