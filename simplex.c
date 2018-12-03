@@ -421,7 +421,8 @@ void liberaModelo(Model modelo) {
     matLibera(modelo -> naoBase);
     matLibera(modelo -> B);
     matLibera(modelo -> solucao);
-
+    free(modelo);    
+    
     return;
 }
 
