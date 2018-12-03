@@ -12,12 +12,12 @@
 
 int main(int argc, char *argv[]) {
 
-	// Recebe parametros da linha de comando.
-	// <modelo.mod> <arquivoSaida>
-	if(argc <= 2) {
-		printf("Especificar arquivo de modelo e local para saida de dados.");
-		return 0;
-	}
+    // Recebe parametros da linha de comando.
+    // <modelo.mod> <arquivoSaida>
+    if(argc <= 2) {
+        printf("Especificar arquivo de modelo e local para saida de dados.");
+        return 0;
+    }
 
     Model modelo = carregaModelo(argv[1]);
     int solucao = simplex(modelo);
@@ -26,5 +26,5 @@ int main(int argc, char *argv[]) {
     // Libera memoria utilizada pelo modelo:
     liberaModelo(modelo);
 
-	return 0;
+    return 0;
 }
