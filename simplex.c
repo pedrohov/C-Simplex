@@ -261,7 +261,6 @@ int simplex(Model modelo) {
             return -2;
         }
         matLibera(Aj);
-        matLibera(u);
 
         // (REQUISITO 06) Determina o valor de theta:
         double theta = INFINITY;
@@ -278,6 +277,7 @@ int simplex(Model modelo) {
                 }
             }
         }
+        matLibera(u);
 
         // [DEBUG] Indice da variavel a sair da base:
         // printf("Variavel sai da base: %d, theta = %lf\n", indice, theta);
